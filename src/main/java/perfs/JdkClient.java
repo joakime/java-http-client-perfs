@@ -34,4 +34,10 @@ public class JdkClient implements IHttpClient
             throw new RuntimeException("Bad response status: " + response.statusCode());
         return response.body();
     }
+
+    @Override
+    public String toString()
+    {
+        return this.getClass().getSimpleName();
+    }
 }

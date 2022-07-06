@@ -14,7 +14,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.eclipse.jetty.util.IO;
 
-public class ApacheClient implements IHttpClient
+public class ApacheBlockingClient implements IHttpClient
 {
     private CloseableHttpClient client;
 
@@ -60,5 +60,11 @@ public class ApacheClient implements IHttpClient
         {
             return IO.toString(in, StandardCharsets.UTF_8);
         }
+    }
+
+    @Override
+    public String toString()
+    {
+        return this.getClass().getSimpleName();
     }
 }

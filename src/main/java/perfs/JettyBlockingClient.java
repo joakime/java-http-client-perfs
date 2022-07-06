@@ -10,7 +10,7 @@ import org.eclipse.jetty.client.util.StringRequestContent;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.util.component.LifeCycle;
 
-public class JettyClient implements IHttpClient
+public class JettyBlockingClient implements IHttpClient
 {
     private HttpClient client;
 
@@ -43,5 +43,11 @@ public class JettyClient implements IHttpClient
         if (response.getStatus() != 200)
             throw new RuntimeException("Bad response status: " + response.getStatus());
         return response.getContentAsString();
+    }
+
+    @Override
+    public String toString()
+    {
+        return this.getClass().getSimpleName();
     }
 }
