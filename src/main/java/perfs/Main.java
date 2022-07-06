@@ -44,7 +44,6 @@ public class Main
                     IntStream.range(0, 16).parallel().forEach(i ->
                         IntStream.range(0, runs).forEach(j ->
                         {
-                            String num = "" + i + j;
                             run(clientImpl, destUri, (i + j), iterations);
                         })
                     );
