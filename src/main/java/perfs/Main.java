@@ -32,6 +32,8 @@ public class Main
             // new ApacheMinimalBlockingClient(),
             new JettyBlockingClient());
 
+        // warmup
+
         for (IHttpClient client : clientImpls)
         {
             main.test(client, destUri);

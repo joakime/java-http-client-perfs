@@ -1,8 +1,6 @@
 package perfs;
 
-import java.io.InputStream;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.http.client.config.RequestConfig;
@@ -12,7 +10,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.eclipse.jetty.util.IO;
+import org.apache.http.util.EntityUtils;
 
 public class ApacheInternalBlockingClient implements IHttpClient
 {
@@ -34,6 +32,7 @@ public class ApacheInternalBlockingClient implements IHttpClient
         client = HttpClientBuilder.create()
             .setConnectionManager(connectionManager)
             .setDefaultRequestConfig(config)
+            .disableContentCompression()
             .disableAutomaticRetries()
             .evictExpiredConnections()
             .build();
@@ -56,10 +55,7 @@ public class ApacheInternalBlockingClient implements IHttpClient
         if (response.getStatusLine().getStatusCode() != 200)
             throw new RuntimeException("Bad response status: " + response.getStatusLine());
 
-        try (InputStream in = response.getEntity().getContent())
-        {
-            return IO.toString(in, StandardCharsets.UTF_8);
-        }
+        return EntityUtils.toString(response.getEntity());
     }
 
     @Override

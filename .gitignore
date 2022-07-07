@@ -3,6 +3,9 @@
 .project
 .settings
 
+# flamegraph
+perfs.JmhClient*/
+
 # maven
 target/
 */src/main/java/META-INF/

@@ -8,6 +8,7 @@ import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.util.StringRequestContent;
 import org.eclipse.jetty.http.HttpHeader;
+import org.eclipse.jetty.util.SocketAddressResolver;
 import org.eclipse.jetty.util.component.LifeCycle;
 
 public class JettyBlockingClient implements IHttpClient
@@ -22,6 +23,7 @@ public class JettyBlockingClient implements IHttpClient
         client.setFollowRedirects(false);
         client.setIdleTimeout(TimeUnit.SECONDS.toMillis(30));
         client.setName("jetty-client");
+        client.setSocketAddressResolver(new SocketAddressResolver.Sync());
         client.start();
         client.getContentDecoderFactories().clear();
     }
