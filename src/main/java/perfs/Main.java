@@ -1,6 +1,7 @@
 package perfs;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -20,15 +21,9 @@ public class Main
     public static void main(String[] args)
     {
         URI destUri = URI.create("http://ceres:9797/test/dump/info");
-        Main main = new Main();
+        Main main = new Main(10, 1000);
 
-        List<IHttpClient> clientImpls = List.of(
-            new JdkClient(),
-            new ApacheDefaultBlockingClient(),
-            new ApacheInternalBlockingClient(),
-            new ApacheMinimalBlockingClient(),
-            new JettyBlockingClient()
-        );
+        List<IHttpClient> clientImpls = List.of(new JdkClient(), new ApacheDefaultBlockingClient(), new ApacheInternalBlockingClient(), new ApacheMinimalBlockingClient(), new JettyBlockingClient());
 
         for (IHttpClient client : clientImpls)
         {
@@ -38,13 +33,34 @@ public class Main
         System.exit(0);
     }
 
+    final int secondsTotalRun;
+    final int tps;
+    // calculation of maximum speed of scheduleAtFixedRate()
+    final int generatorActionsPerSecond = 2000;
+    final long periodMs = 5;
+    final int generatorCount;
+
+    public Main(int secondsPerRun, int tps)
+    {
+        this.secondsTotalRun = secondsPerRun;
+        this.tps = tps;
+        this.generatorCount = (secondsPerRun * tps) / generatorActionsPerSecond;
+
+        LOG.info("seconds per run = {}", secondsPerRun);
+        LOG.info("TPS = {}", tps);
+        LOG.info("Total expected count = {}", secondsPerRun * tps);
+        LOG.info("period (ms) = {}", periodMs);
+        LOG.info("generatorActionsPerSecond = {}", generatorActionsPerSecond);
+        LOG.info("generatorCount = {}", generatorCount);
+    }
+
     private void test(IHttpClient clientImpl, URI destUri)
     {
         try
         {
             startClient(clientImpl);
 
-            ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(200);
+            ScheduledExecutorService service = Executors.newScheduledThreadPool(200);
             AtomicInteger num = new AtomicInteger(0);
             Histogram histogram = new Histogram(3);
 
@@ -53,16 +69,21 @@ public class Main
 
             try
             {
-                ScheduledFuture<?> fixedrate = scheduledExecutorService.scheduleAtFixedRate(() ->
+                List<ScheduledFuture<?>> generators = new ArrayList<>();
+                for (int i = 0; i < generatorCount; i++)
                 {
-                    run(clientImpl, histogram, destUri, num);
-                }, 0, 10, TimeUnit.MILLISECONDS);
-                scheduledExecutorService.schedule(() ->
+                    generators.add(service.scheduleAtFixedRate(() ->
+                    {
+                        run(clientImpl, histogram, destUri, num);
+                    }, 0, periodMs, TimeUnit.MILLISECONDS));
+                }
+
+                service.schedule(() ->
                 {
                     LOG.info("Cancelling fixed rate");
-                    fixedrate.cancel(false);
-                    scheduledExecutorService.shutdown();
-                }, 10, TimeUnit.SECONDS);
+                    generators.forEach((generator) -> generator.cancel(false));
+                    service.shutdown();
+                }, secondsTotalRun, TimeUnit.SECONDS);
             }
             catch (Exception e)
             {
@@ -71,7 +92,7 @@ public class Main
 
             try
             {
-                scheduledExecutorService.awaitTermination(30, TimeUnit.SECONDS);
+                service.awaitTermination(30, TimeUnit.SECONDS);
             }
             catch (InterruptedException e)
             {
@@ -119,8 +140,7 @@ public class Main
         {
             // LOG.info("Run POST to {}", uri);
             long startNanos = System.nanoTime();
-            String responseBody = clientImpl.post(uri, "text/plain",
-                "This is request body number [" + num.get() + "]");
+            String responseBody = clientImpl.post(uri, "text/plain", "This is request body number [" + num.get() + "]");
             long endNanos = System.nanoTime();
             long latency = endNanos - startNanos;
             histogram.recordValue(latency);
