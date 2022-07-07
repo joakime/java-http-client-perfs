@@ -9,8 +9,10 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.HdrHistogram.ConcurrentHistogram;
 import org.HdrHistogram.Histogram;
 import org.eclipse.jetty.toolchain.perf.HistogramSnapshot;
+import org.eclipse.jetty.toolchain.perf.PlatformMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +25,12 @@ public class Main
         URI destUri = URI.create("http://ceres:9797/test/dump/info");
         Main main = new Main(10, 1000);
 
-        List<IHttpClient> clientImpls = List.of(new JdkClient(), new ApacheDefaultBlockingClient(), new ApacheInternalBlockingClient(), new ApacheMinimalBlockingClient(), new JettyBlockingClient());
+        List<IHttpClient> clientImpls = List.of(
+            new JdkClient(),
+            // new ApacheDefaultBlockingClient(),
+            new ApacheInternalBlockingClient(),
+            // new ApacheMinimalBlockingClient(),
+            new JettyBlockingClient());
 
         for (IHttpClient client : clientImpls)
         {
@@ -39,6 +46,8 @@ public class Main
     final int generatorActionsPerSecond = 2000;
     final long periodMs = 5;
     final int generatorCount;
+
+    private final PlatformMonitor monitor = new PlatformMonitor();
 
     public Main(int secondsPerRun, int tps)
     {
@@ -62,7 +71,11 @@ public class Main
 
             ScheduledExecutorService service = Executors.newScheduledThreadPool(200);
             AtomicInteger num = new AtomicInteger(0);
-            Histogram histogram = new Histogram(3);
+            Histogram histogram = new ConcurrentHistogram(
+                TimeUnit.SECONDS.toNanos(1),
+                3);
+
+            System.err.println(monitor.start());
 
             LOG.info("Using POST {} to {}", destUri, clientImpl);
             long nanoStart = System.nanoTime();
@@ -80,6 +93,7 @@ public class Main
 
                 service.schedule(() ->
                 {
+                    System.err.println(monitor.stop());
                     LOG.info("Cancelling fixed rate");
                     generators.forEach((generator) -> generator.cancel(false));
                     service.shutdown();
